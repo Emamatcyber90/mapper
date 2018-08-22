@@ -46,7 +46,14 @@
 #include "fileformats/ocd_types_v8.h" // IWYU pragma: keep
 
 class QChar;
+class QImage;
 class QTextCodec;
+
+namespace Ocd {
+
+struct IconV9;
+
+}  // namespace Ocd
 
 namespace OpenOrienteering {
 
@@ -282,8 +289,14 @@ protected:
 	template< class OcdBaseSymbol >
 	void setupBaseSymbol(Symbol* symbol, const OcdBaseSymbol& ocd_base_symbol);
 	
+	template< class OcdBaseSymbol >
+	void checkSymbolIcon(Symbol* symbol, const OcdBaseSymbol& ocd_base_symbol);
+	
 	void setupPointSymbolPattern(PointSymbol* symbol, std::size_t data_size, const Ocd::PointSymbolElementV8* elements);
 	
+	QImage importSymbolIcon(const Ocd::IconV8& icon);
+	
+	QImage importSymbolIcon(const Ocd::IconV9& icon);
 	
 	// Object import
 	

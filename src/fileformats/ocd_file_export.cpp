@@ -47,6 +47,7 @@
 #include <QPointF>
 #include <QRectF>
 #include <QRgb>
+#include <QSize>
 #include <QString>
 #include <QTextCodec>
 #include <QTextDecoder>
@@ -290,6 +291,22 @@ constexpr qint32 convertSize(qint64 size)
 int convertRotation(qreal angle)
 {
 	return qRound(10 * qRadiansToDegrees(angle));
+}
+
+
+
+QImage iconForExport(const Map& map, const Symbol& symbol, int icon_size)
+{
+	auto image = symbol.getCustomIcon();
+	if (image.isNull())
+		image = symbol.createIcon(map, icon_size, true);
+	else if (image.size() != QSize{icon_size, icon_size})
+		image = image.scaled(icon_size, icon_size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+	
+	if (image.format() != QImage::Format_ARGB32_Premultiplied)
+		image = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+	
+	return image;
 }
 
 
@@ -1363,7 +1380,7 @@ void OcdFileExport::setupBaseSymbol(const Symbol* symbol, quint32 symbol_number,
 		}
 	}
 	
-	exportSymbolIcon(symbol, ocd_base_symbol.icon);
+	exportSymbolIcon(map, symbol, ocd_base_symbol.icon);
 }
 
 
@@ -2312,7 +2329,7 @@ QByteArray OcdFileExport::exportCombinedAreaSymbol(
 {
 	auto ocd_symbol = exportAreaSymbol<OcdAreaSymbol>(area_symbol, symbol_number);
 	auto ocd_subsymbol_data = reinterpret_cast<OcdAreaSymbol*>(ocd_symbol.data());
-	exportSymbolIcon(combined_symbol, ocd_subsymbol_data->base.icon);
+	exportSymbolIcon(map, combined_symbol, ocd_subsymbol_data->base.icon);
 	ocd_subsymbol_data->common.border_on_V9 = 1;
 	ocd_subsymbol_data->border_symbol = symbol_numbers[line_symbol];
 	return ocd_symbol;
@@ -2329,7 +2346,7 @@ QByteArray OcdFileExport::exportCombinedLineSymbol(
 {
 	auto ocd_symbol = exportLineSymbol<OcdLineSymbol>(main_line, symbol_number);
 	auto ocd_symbol_data = reinterpret_cast<OcdLineSymbol*>(ocd_symbol.data());
-	exportSymbolIcon(combined_symbol, ocd_symbol_data->base.icon);
+	exportSymbolIcon(map, combined_symbol, ocd_symbol_data->base.icon);
 	
 	auto& ocd_line_common = ocd_symbol_data->common;
 	if (framing)
@@ -2364,13 +2381,11 @@ QByteArray OcdFileExport::exportCombinedLineSymbol(
 
 
 
-void OcdFileExport::exportSymbolIcon(const Symbol* symbol, Ocd::IconV8& icon)
+void OcdFileExport::exportSymbolIcon(const Map* map, const Symbol* symbol, Ocd::IconV8& icon)
 {
 	// Icon: 22x22 with 4 bit palette color, origin at bottom left
 	constexpr int icon_size = 22;
-	QImage image = symbol->createIcon(*map, icon_size, false)
-	               .convertToFormat(QImage::Format_ARGB32_Premultiplied);
-	
+	auto image = iconForExport(*map, *symbol, icon_size);
 	auto process_pixel = [&image](int x, int y)->int {
 		// Apply premultiplied pixel on white background
 		auto premultiplied = image.pixel(x, y);
@@ -2420,13 +2435,11 @@ void OcdFileExport::exportSymbolIcon(const Symbol* symbol, Ocd::IconV8& icon)
 	}
 }
 
-void OcdFileExport::exportSymbolIcon(const Symbol* symbol, Ocd::IconV9& icon)
+void OcdFileExport::exportSymbolIcon(const Map* map, const Symbol* symbol, Ocd::IconV9& icon)
 {
 	// Icon: 22x22 with 8 bit palette color code, origin at bottom left
 	constexpr int icon_size = 22;
-	QImage image = symbol->createIcon(*map, icon_size, true)
-	               .convertToFormat(QImage::Format_ARGB32_Premultiplied);
-	
+	auto image = iconForExport(*map, *symbol, icon_size);
 	auto process_pixel = [&image](int x, int y)->quint8 {
 		// Apply premultiplied pixel on white background
 		auto premultiplied = image.pixel(x, y);

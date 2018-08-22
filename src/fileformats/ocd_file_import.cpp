@@ -33,12 +33,14 @@
 #include <QtMath>
 #include <QChar>
 #include <QCoreApplication>
+#include <QColor>
 #include <QDebug>
 #include <QDir>
 #include <QFileInfo>
 #include <QFlags>
 #include <QFontMetricsF>
 #include <QIODevice>
+#include <QImage>
 #include <QImageReader>
 #include <QLatin1Char>
 #include <QLatin1String>
@@ -65,6 +67,7 @@
 #include "fileformats/file_format.h"
 #include "fileformats/ocd_file_format.h"
 #include "fileformats/ocd_georef_fields.h"
+#include "fileformats/ocd_file_export.h"
 #include "fileformats/ocd_types_v8.h"
 #include "fileformats/ocd_types_v9.h"
 #include "fileformats/ocd_types_v10.h"
@@ -800,6 +803,12 @@ void OcdFileImport::importSymbols(const OcdFile< F >& file)
 		symbol_index[ocd_symbol.number] = symbol;
 	}
 	resolveSubsymbols();
+	
+	for (auto ocd_symbol_entry : file.symbols())
+	{
+		auto& ocd_symbol = *ocd_symbol_entry.entity;
+		checkSymbolIcon(symbol_index[ocd_symbol.number], ocd_symbol);
+	}
 }
 
 void OcdFileImport::resolveSubsymbols()
@@ -1076,6 +1085,59 @@ void OcdFileImport::setupBaseSymbol(Symbol* symbol, const OcdBaseSymbol& ocd_bas
 	symbol->setIsHelperSymbol(false);
 	symbol->setProtected(ocd_base_symbol.status & Ocd::SymbolProtected);
 	symbol->setHidden(ocd_base_symbol.status & Ocd::SymbolHidden);
+	
+	if (ocd_version == 8 && ocd_base_symbol.flags & 0x02)
+	{
+		addWarning(tr("In symbol symbol %1 '%2': %3").
+		           arg(symbol->getNumberAsString(), symbol->getName(),
+		               tr("Unsupported compressed icon")));
+#ifdef MAPPER_DEVELOPMENT_BUILD
+		qDebug("Unsupported compressed symbol icon: %s", qPrintable(symbol->getName()));
+		/// \todo Factor out generic hex dump function
+		constexpr auto extent = std::extent<typename std::remove_pointer<decltype(ocd_base_symbol.icon.bits)>::type>::value;
+		auto icon_bits = ocd_base_symbol.icon.bits;
+		for (int i = 0; i < 16; ++i)
+		{
+			QByteArray data;
+			data.reserve(80);
+			data.append(QByteArray("000")
+			            .append(QByteArray::number(16*i,16))
+			            .right(4)
+			            .append("   "));
+			for (int j = 0; j < 17; ++j)
+			{
+				if (icon_bits == ocd_base_symbol.icon.bits + extent)
+					break;
+				if (*icon_bits < 0x10)
+					data += '0';
+				data += QByteArray::number(*(icon_bits++), 16) + ' ';
+			}
+			qDebug("%s", data.constData());
+		}
+#endif
+	}
+	else
+	{
+		symbol->setCustomIcon(importSymbolIcon(ocd_base_symbol.icon));
+	}
+}
+
+
+template<class OcdBaseSymbol>
+void OcdFileImport::checkSymbolIcon(Symbol* symbol, const OcdBaseSymbol& ocd_base_symbol)
+{
+	const auto imported = symbol->getCustomIcon();
+	if (imported.isNull())
+		return;
+	
+	// The imported low resolution icon is to be used only if its really
+	// different from the generated icon. The comparison is done in OCD
+	// format, due to the limited color palette.
+	symbol->setCustomIcon({});
+	decltype(ocd_base_symbol.icon) exported;
+	OcdFileExport::exportSymbolIcon(map, symbol, exported);
+	if (ocd_base_symbol.icon != exported)
+		symbol->setCustomIcon(imported);
 }
 
 
@@ -1770,6 +1832,188 @@ void OcdFileImport::setupPointSymbolPattern(PointSymbol* symbol, std::size_t dat
 		i += element->num_coords;
 	}
 }
+
+
+QImage OcdFileImport::importSymbolIcon(const Ocd::IconV8& icon)
+{
+	static const QColor palette[16] = {
+	    {   0,   0,   0 },
+	    { 128,   0,   0 },
+	    { 0,   128,   0 },
+	    { 128, 128,   0 },
+	    {   0,   0, 128 },
+	    { 128,   0, 128 },
+	    {   0, 128, 128 },
+	    { 128, 128, 128 },
+	    { 192, 192, 192 },
+	    { 255,   0,   0 },
+	    {   0, 255,   0 },
+	    { 255, 255,   0 },
+	    {   0,   0, 255 },
+	    { 255,   0, 255 },
+	    {   0, 255, 255 },
+	    { 255, 255, 255 }
+	};
+	
+	auto icon_bits = icon.bits;
+	constexpr int icon_size = 22;
+	QImage image(icon_size, icon_size, QImage::Format_ARGB32_Premultiplied);
+	for (int y = icon_size - 1; y >= 0; --y)
+	{
+		for (int x = 0; x < icon_size; x += 2)
+		{
+			image.setPixelColor(x, y, palette[(*icon_bits) >> 4]);
+			image.setPixelColor(x+1, y, palette[*(icon_bits++) & 0xf]);
+		}
+		icon_bits++;
+	}
+	return image;
+}
+
+QImage OcdFileImport::importSymbolIcon(const Ocd::IconV9& icon)
+{
+	static const QColor palette[125] = {
+	    {   0,   0,   0 },
+	    {   0,   0,  64 },
+	    {   0,   0, 128 },
+	    {   0,   0, 192 },
+	    {   0,   0, 255 },
+	    {   0,  64,   0 },
+	    {   0,  64,  64 },
+	    {   0,  64, 128 },
+	    {   0,  64, 192 },
+	    {   0,  64, 255 },
+	    {   0, 128,   0 },
+	    {   0, 128,  64 },
+	    {   0, 128, 128 },
+	    {   0, 128, 192 },
+	    {   0, 128, 255 },
+	    {   0, 192,   0 },
+	    {   0, 192,  64 },
+	    {   0, 192, 128 },
+	    {   0, 192, 192 },
+	    {   0, 192, 255 },
+	    {   0, 255,   0 },
+	    {   0, 255,  64 },
+	    {   0, 255, 128 },
+	    {   0, 255, 192 },
+	    {   0, 255, 255 },
+	    {  64,   0,   0 },
+	    {  64,   0,  64 },
+	    {  64,   0, 128 },
+	    {  64,   0, 192 },
+	    {  64,   0, 255 },
+	    {  64,  64,   0 },
+	    {  64,  64,  64 },
+	    {  64,  64, 128 },
+	    {  64,  64, 192 },
+	    {  64,  64, 255 },
+	    {  64, 128,   0 },
+	    {  64, 128,  64 },
+	    {  64, 128, 128 },
+	    {  64, 128, 192 },
+	    {  64, 128, 255 },
+	    {  64, 192,   0 },
+	    {  64, 192,  64 },
+	    {  64, 192, 128 },
+	    {  64, 192, 192 },
+	    {  64, 192, 255 },
+	    {  64, 255,   0 },
+	    {  64, 255,  64 },
+	    {  64, 255, 128 },
+	    {  64, 255, 192 },
+	    {  64, 255, 255 },
+	    { 128,   0,   0 },
+	    { 128,   0,  64 },
+	    { 128,   0, 128 },
+	    { 128,   0, 192 },
+	    { 128,   0, 255 },
+	    { 128,  64,   0 },
+	    { 128,  64,  64 },
+	    { 128,  64, 128 },
+	    { 128,  64, 192 },
+	    { 128,  64, 255 },
+	    { 128, 128,   0 },
+	    { 128, 128,  64 },
+	    { 128, 128, 128 },
+	    { 128, 128, 192 },
+	    { 128, 128, 255 },
+	    { 128, 192,   0 },
+	    { 128, 192,  64 },
+	    { 128, 192, 128 },
+	    { 128, 192, 192 },
+	    { 128, 192, 255 },
+	    { 128, 255,   0 },
+	    { 128, 255,  64 },
+	    { 128, 255, 128 },
+	    { 128, 255, 192 },
+	    { 128, 255, 255 },
+	    { 192,   0,   0 },
+	    { 192,   0,  64 },
+	    { 192,   0, 128 },
+	    { 192,   0, 192 },
+	    { 192,   0, 255 },
+	    { 192,  64,   0 },
+	    { 192,  64,  64 },
+	    { 192,  64, 128 },
+	    { 192,  64, 192 },
+	    { 192,  64, 255 },
+	    { 192, 128,   0 },
+	    { 192, 128,  64 },
+	    { 192, 128, 128 },
+	    { 192, 128, 192 },
+	    { 192, 128, 255 },
+	    { 192, 192,   0 },
+	    { 192, 192,  64 },
+	    { 192, 192, 128 },
+	    { 192, 192, 192 },
+	    { 192, 192, 255 },
+	    { 192, 255,   0 },
+	    { 192, 255,  64 },
+	    { 192, 255, 128 },
+	    { 192, 255, 192 },
+	    { 192, 255, 255 },
+	    { 255,   0,   0 },
+	    { 255,   0,  64 },
+	    { 255,   0, 128 },
+	    { 255,   0, 192 },
+	    { 255,   0, 255 },
+	    { 255,  64,   0 },
+	    { 255,  64,  64 },
+	    { 255,  64, 128 },
+	    { 255,  64, 192 },
+	    { 255,  64, 255 },
+	    { 255, 128,   0 },
+	    { 255, 128,  64 },
+	    { 255, 128, 128 },
+	    { 255, 128, 192 },
+	    { 255, 128, 255 },
+	    { 255, 192,   0 },
+	    { 255, 192,  64 },
+	    { 255, 192, 128 },
+	    { 255, 192, 192 },
+	    { 255, 192, 255 },
+	    { 255, 255,   0 },
+	    { 255, 255,  64 },
+	    { 255, 255, 128 },
+	    { 255, 255, 192 },
+	    { 255, 255, 255 },
+	};
+	
+	auto icon_bits = icon.bits;
+	constexpr int icon_size = 22;
+	QImage image(icon_size, icon_size, QImage::Format_ARGB32_Premultiplied);
+	for (int y = icon_size - 1; y >= 0; --y)
+	{
+		for (int x = 0; x < icon_size; ++x)
+		{
+			image.setPixelColor(x, y, palette[*(icon_bits++)]);
+		}
+	}
+	return image;
+}
+
+
 
 template< class O >
 Object* OcdFileImport::importObject(const O& ocd_object, MapPart* part)

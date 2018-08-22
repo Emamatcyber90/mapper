@@ -249,11 +249,13 @@ protected:
 	        const LineSymbol* double_line );
 	
 	
-	void exportSymbolIcon(const Symbol* symbol, Ocd::IconV8& icon);
+public:
+	static void exportSymbolIcon(const Map* map, const Symbol* symbol, Ocd::IconV8& icon);
 	
-	void exportSymbolIcon(const Symbol* symbol, Ocd::IconV9& icon);
+	static void exportSymbolIcon(const Map* map, const Symbol* symbol, Ocd::IconV9& icon);
 	
 	
+protected:
 	template< class Format >
 	void exportObjects(OcdFile<Format>& file);
 	
