@@ -23,6 +23,7 @@
 #include "ocd_file_export.h"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdlib>
 #include <iterator>
@@ -85,6 +86,15 @@
 #include "templates/template.h"
 #include "util/encoding.h"
 #include "util/util.h"
+
+
+namespace Ocd {
+
+// instantiated from ocd_file_import.cpp
+extern template std::array<QColor, 16> IconV8::palette();
+
+}  // namespace Ocd
+
 
 
 namespace OpenOrienteering {
@@ -334,57 +344,19 @@ int getPaletteColorV6(QRgb rgb)
 		int hue;
 		int saturation;
 		int value;
-	};
-	static const PaletteColor palette[16] = {
-	    {  -1,   0,   0 },
-	    {   0, 255, 128 },
-	    { 120, 255, 128 },
-	    {  60, 255, 128 },
-	    { 240, 255, 128 },
-	    { 300, 255, 128 },
-	    { 180, 255, 128 },
-	    {  -1,   0, 128 },
-	    {  -1,   0, 192 },
-	    {   0, 255, 255 },
-	    { 120, 255, 255 },
-	    {  60, 255, 255 },
-	    { 240, 255, 255 },
-	    { 300, 255, 255 },
-	    { 180, 255, 255 },
-	    {  -1,   0, 255 },
-	};
-	
-#if 0
-	// This is how `palette` is generated.
-	static auto generate = true;
-	if (generate)
-	{
-		static const QColor original_palette[16] = {
-			QColor(  0,   0,   0).toHsv(),
-			QColor(128,   0,   0).toHsv(),
-			QColor(0,   128,   0).toHsv(),
-			QColor(128, 128,   0).toHsv(),
-			QColor(  0,   0, 128).toHsv(),
-			QColor(128,   0, 128).toHsv(),
-			QColor(  0, 128, 128).toHsv(),
-			QColor(128, 128, 128).toHsv(),
-			QColor(192, 192, 192).toHsv(),
-			QColor(255,   0,   0).toHsv(),
-			QColor(  0, 255,   0).toHsv(),
-			QColor(255, 255,   0).toHsv(),
-			QColor(  0,   0, 255).toHsv(),
-			QColor(255,   0, 255).toHsv(),
-			QColor(  0, 255, 255).toHsv(),
-			QColor(255, 255, 255).toHsv()
-		};
-		
-		for (auto& c : original_palette)
+		static PaletteColor fromQColor(const QColor& color)
 		{
-			qDebug("		{ %3d, %3d, %3d },", c.hue(), c.saturation(), c.value());
+			return { color.hue(), color.saturation(), color.value() };
 		}
-		generate = false;
-	}
-#endif
+	};
+	static const auto palette = []() {
+		std::array<PaletteColor, 16> palette_hsv;
+		const auto palette_rgb = Ocd::IconV8::palette<QColor>();
+		std::transform(begin(palette_rgb), end(palette_rgb), begin(palette_hsv), [](auto& rgb){
+			return PaletteColor::fromQColor(rgb.toHsv());
+		});
+		return palette_hsv;
+	}();
 	
 	int best_index = 0;
 	auto best_distance = 2100000;  // > 6 * (10*sq(180) + sq(128) + sq(64))
@@ -434,153 +406,7 @@ quint8 getPaletteColorV9(QRgb rgb)
 		int g;
 		int b;
 	};
-	static const PaletteColor palette[125] = {
-	    {   0,   0,   0 },
-	    {   0,   0,  64 },
-	    {   0,   0, 128 },
-	    {   0,   0, 192 },
-	    {   0,   0, 255 },
-	    {   0,  64,   0 },
-	    {   0,  64,  64 },
-	    {   0,  64, 128 },
-	    {   0,  64, 192 },
-	    {   0,  64, 255 },
-	    {   0, 128,   0 },
-	    {   0, 128,  64 },
-	    {   0, 128, 128 },
-	    {   0, 128, 192 },
-	    {   0, 128, 255 },
-	    {   0, 192,   0 },
-	    {   0, 192,  64 },
-	    {   0, 192, 128 },
-	    {   0, 192, 192 },
-	    {   0, 192, 255 },
-	    {   0, 255,   0 },
-	    {   0, 255,  64 },
-	    {   0, 255, 128 },
-	    {   0, 255, 192 },
-	    {   0, 255, 255 },
-	    {  64,   0,   0 },
-	    {  64,   0,  64 },
-	    {  64,   0, 128 },
-	    {  64,   0, 192 },
-	    {  64,   0, 255 },
-	    {  64,  64,   0 },
-	    {  64,  64,  64 },
-	    {  64,  64, 128 },
-	    {  64,  64, 192 },
-	    {  64,  64, 255 },
-	    {  64, 128,   0 },
-	    {  64, 128,  64 },
-	    {  64, 128, 128 },
-	    {  64, 128, 192 },
-	    {  64, 128, 255 },
-	    {  64, 192,   0 },
-	    {  64, 192,  64 },
-	    {  64, 192, 128 },
-	    {  64, 192, 192 },
-	    {  64, 192, 255 },
-	    {  64, 255,   0 },
-	    {  64, 255,  64 },
-	    {  64, 255, 128 },
-	    {  64, 255, 192 },
-	    {  64, 255, 255 },
-	    { 128,   0,   0 },
-	    { 128,   0,  64 },
-	    { 128,   0, 128 },
-	    { 128,   0, 192 },
-	    { 128,   0, 255 },
-	    { 128,  64,   0 },
-	    { 128,  64,  64 },
-	    { 128,  64, 128 },
-	    { 128,  64, 192 },
-	    { 128,  64, 255 },
-	    { 128, 128,   0 },
-	    { 128, 128,  64 },
-	    { 128, 128, 128 },
-	    { 128, 128, 192 },
-	    { 128, 128, 255 },
-	    { 128, 192,   0 },
-	    { 128, 192,  64 },
-	    { 128, 192, 128 },
-	    { 128, 192, 192 },
-	    { 128, 192, 255 },
-	    { 128, 255,   0 },
-	    { 128, 255,  64 },
-	    { 128, 255, 128 },
-	    { 128, 255, 192 },
-	    { 128, 255, 255 },
-	    { 192,   0,   0 },
-	    { 192,   0,  64 },
-	    { 192,   0, 128 },
-	    { 192,   0, 192 },
-	    { 192,   0, 255 },
-	    { 192,  64,   0 },
-	    { 192,  64,  64 },
-	    { 192,  64, 128 },
-	    { 192,  64, 192 },
-	    { 192,  64, 255 },
-	    { 192, 128,   0 },
-	    { 192, 128,  64 },
-	    { 192, 128, 128 },
-	    { 192, 128, 192 },
-	    { 192, 128, 255 },
-	    { 192, 192,   0 },
-	    { 192, 192,  64 },
-	    { 192, 192, 128 },
-	    { 192, 192, 192 },
-	    { 192, 192, 255 },
-	    { 192, 255,   0 },
-	    { 192, 255,  64 },
-	    { 192, 255, 128 },
-	    { 192, 255, 192 },
-	    { 192, 255, 255 },
-	    { 255,   0,   0 },
-	    { 255,   0,  64 },
-	    { 255,   0, 128 },
-	    { 255,   0, 192 },
-	    { 255,   0, 255 },
-	    { 255,  64,   0 },
-	    { 255,  64,  64 },
-	    { 255,  64, 128 },
-	    { 255,  64, 192 },
-	    { 255,  64, 255 },
-	    { 255, 128,   0 },
-	    { 255, 128,  64 },
-	    { 255, 128, 128 },
-	    { 255, 128, 192 },
-	    { 255, 128, 255 },
-	    { 255, 192,   0 },
-	    { 255, 192,  64 },
-	    { 255, 192, 128 },
-	    { 255, 192, 192 },
-	    { 255, 192, 255 },
-	    { 255, 255,   0 },
-	    { 255, 255,  64 },
-	    { 255, 255, 128 },
-	    { 255, 255, 192 },
-	    { 255, 255, 255 },
-	};
-	
-#if 0
-	// This is how `palette` is generated.
-	static auto generate = true;
-	if (generate)
-	{
-		static const int color_levels[5] = { 0x00, 0x40, 0x80, 0xc0, 0xff };
-		for (auto r : color_levels)
-		{
-			for (auto g : color_levels)
-			{
-				for (auto b : color_levels)
-				{
-					qDebug("		{ %3d, %3d, %3d },", r, g, b);
-				}
-			}
-		}
-		generate = false;
-	}
-#endif
+	static const auto palette = Ocd::IconV9::palette<PaletteColor>();
 	
 	auto r = qRed(rgb);
 	auto g = qGreen(rgb);
@@ -2384,7 +2210,7 @@ QByteArray OcdFileExport::exportCombinedLineSymbol(
 void OcdFileExport::exportSymbolIcon(const Map* map, const Symbol* symbol, Ocd::IconV8& icon)
 {
 	// Icon: 22x22 with 4 bit palette color, origin at bottom left
-	constexpr int icon_size = 22;
+	constexpr int icon_size = Ocd::IconV8::size();
 	auto image = iconForExport(*map, *symbol, icon_size);
 	auto process_pixel = [&image](int x, int y)->int {
 		// Apply premultiplied pixel on white background
@@ -2438,7 +2264,7 @@ void OcdFileExport::exportSymbolIcon(const Map* map, const Symbol* symbol, Ocd::
 void OcdFileExport::exportSymbolIcon(const Map* map, const Symbol* symbol, Ocd::IconV9& icon)
 {
 	// Icon: 22x22 with 8 bit palette color code, origin at bottom left
-	constexpr int icon_size = 22;
+	constexpr int icon_size = Ocd::IconV9::size();
 	auto image = iconForExport(*map, *symbol, icon_size);
 	auto process_pixel = [&image](int x, int y)->quint8 {
 		// Apply premultiplied pixel on white background

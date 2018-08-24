@@ -23,6 +23,7 @@
 #include "ocd_file_import.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <iterator>
 #include <limits>
@@ -79,6 +80,15 @@
 #include "templates/template_map.h"
 #include "util/encoding.h"
 #include "util/util.h"
+
+
+namespace Ocd {
+
+// explicit instantiation
+template std::array<QColor, 16> IconV8::palette();
+template std::array<QColor, 125> IconV9::palette();
+
+}  // namespace Ocd
 
 
 namespace OpenOrienteering {
@@ -1836,28 +1846,11 @@ void OcdFileImport::setupPointSymbolPattern(PointSymbol* symbol, std::size_t dat
 
 QImage OcdFileImport::importSymbolIcon(const Ocd::IconV8& icon)
 {
-	static const QColor palette[16] = {
-	    {   0,   0,   0 },
-	    { 128,   0,   0 },
-	    { 0,   128,   0 },
-	    { 128, 128,   0 },
-	    {   0,   0, 128 },
-	    { 128,   0, 128 },
-	    {   0, 128, 128 },
-	    { 128, 128, 128 },
-	    { 192, 192, 192 },
-	    { 255,   0,   0 },
-	    {   0, 255,   0 },
-	    { 255, 255,   0 },
-	    {   0,   0, 255 },
-	    { 255,   0, 255 },
-	    {   0, 255, 255 },
-	    { 255, 255, 255 }
-	};
+	static const auto palette = Ocd::IconV8::palette<QColor>();
+	constexpr int icon_size = Ocd::IconV8::size();
 	
 	auto icon_bits = icon.bits;
-	constexpr int icon_size = 22;
-	QImage image(icon_size, icon_size, QImage::Format_ARGB32_Premultiplied);
+	auto image = QImage{icon_size, icon_size, QImage::Format_ARGB32_Premultiplied};
 	for (int y = icon_size - 1; y >= 0; --y)
 	{
 		for (int x = 0; x < icon_size; x += 2)
@@ -1872,136 +1865,10 @@ QImage OcdFileImport::importSymbolIcon(const Ocd::IconV8& icon)
 
 QImage OcdFileImport::importSymbolIcon(const Ocd::IconV9& icon)
 {
-	static const QColor palette[125] = {
-	    {   0,   0,   0 },
-	    {   0,   0,  64 },
-	    {   0,   0, 128 },
-	    {   0,   0, 192 },
-	    {   0,   0, 255 },
-	    {   0,  64,   0 },
-	    {   0,  64,  64 },
-	    {   0,  64, 128 },
-	    {   0,  64, 192 },
-	    {   0,  64, 255 },
-	    {   0, 128,   0 },
-	    {   0, 128,  64 },
-	    {   0, 128, 128 },
-	    {   0, 128, 192 },
-	    {   0, 128, 255 },
-	    {   0, 192,   0 },
-	    {   0, 192,  64 },
-	    {   0, 192, 128 },
-	    {   0, 192, 192 },
-	    {   0, 192, 255 },
-	    {   0, 255,   0 },
-	    {   0, 255,  64 },
-	    {   0, 255, 128 },
-	    {   0, 255, 192 },
-	    {   0, 255, 255 },
-	    {  64,   0,   0 },
-	    {  64,   0,  64 },
-	    {  64,   0, 128 },
-	    {  64,   0, 192 },
-	    {  64,   0, 255 },
-	    {  64,  64,   0 },
-	    {  64,  64,  64 },
-	    {  64,  64, 128 },
-	    {  64,  64, 192 },
-	    {  64,  64, 255 },
-	    {  64, 128,   0 },
-	    {  64, 128,  64 },
-	    {  64, 128, 128 },
-	    {  64, 128, 192 },
-	    {  64, 128, 255 },
-	    {  64, 192,   0 },
-	    {  64, 192,  64 },
-	    {  64, 192, 128 },
-	    {  64, 192, 192 },
-	    {  64, 192, 255 },
-	    {  64, 255,   0 },
-	    {  64, 255,  64 },
-	    {  64, 255, 128 },
-	    {  64, 255, 192 },
-	    {  64, 255, 255 },
-	    { 128,   0,   0 },
-	    { 128,   0,  64 },
-	    { 128,   0, 128 },
-	    { 128,   0, 192 },
-	    { 128,   0, 255 },
-	    { 128,  64,   0 },
-	    { 128,  64,  64 },
-	    { 128,  64, 128 },
-	    { 128,  64, 192 },
-	    { 128,  64, 255 },
-	    { 128, 128,   0 },
-	    { 128, 128,  64 },
-	    { 128, 128, 128 },
-	    { 128, 128, 192 },
-	    { 128, 128, 255 },
-	    { 128, 192,   0 },
-	    { 128, 192,  64 },
-	    { 128, 192, 128 },
-	    { 128, 192, 192 },
-	    { 128, 192, 255 },
-	    { 128, 255,   0 },
-	    { 128, 255,  64 },
-	    { 128, 255, 128 },
-	    { 128, 255, 192 },
-	    { 128, 255, 255 },
-	    { 192,   0,   0 },
-	    { 192,   0,  64 },
-	    { 192,   0, 128 },
-	    { 192,   0, 192 },
-	    { 192,   0, 255 },
-	    { 192,  64,   0 },
-	    { 192,  64,  64 },
-	    { 192,  64, 128 },
-	    { 192,  64, 192 },
-	    { 192,  64, 255 },
-	    { 192, 128,   0 },
-	    { 192, 128,  64 },
-	    { 192, 128, 128 },
-	    { 192, 128, 192 },
-	    { 192, 128, 255 },
-	    { 192, 192,   0 },
-	    { 192, 192,  64 },
-	    { 192, 192, 128 },
-	    { 192, 192, 192 },
-	    { 192, 192, 255 },
-	    { 192, 255,   0 },
-	    { 192, 255,  64 },
-	    { 192, 255, 128 },
-	    { 192, 255, 192 },
-	    { 192, 255, 255 },
-	    { 255,   0,   0 },
-	    { 255,   0,  64 },
-	    { 255,   0, 128 },
-	    { 255,   0, 192 },
-	    { 255,   0, 255 },
-	    { 255,  64,   0 },
-	    { 255,  64,  64 },
-	    { 255,  64, 128 },
-	    { 255,  64, 192 },
-	    { 255,  64, 255 },
-	    { 255, 128,   0 },
-	    { 255, 128,  64 },
-	    { 255, 128, 128 },
-	    { 255, 128, 192 },
-	    { 255, 128, 255 },
-	    { 255, 192,   0 },
-	    { 255, 192,  64 },
-	    { 255, 192, 128 },
-	    { 255, 192, 192 },
-	    { 255, 192, 255 },
-	    { 255, 255,   0 },
-	    { 255, 255,  64 },
-	    { 255, 255, 128 },
-	    { 255, 255, 192 },
-	    { 255, 255, 255 },
-	};
+	static const auto palette = Ocd::IconV9::palette<QColor>();
+	constexpr int icon_size = Ocd::IconV9::size();
 	
 	auto icon_bits = icon.bits;
-	constexpr int icon_size = 22;
 	QImage image(icon_size, icon_size, QImage::Format_ARGB32_Premultiplied);
 	for (int y = icon_size - 1; y >= 0; --y)
 	{

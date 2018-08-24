@@ -20,6 +20,8 @@
 #ifndef OPENORIENTEERING_OCD_TYPES_V8_H
 #define OPENORIENTEERING_OCD_TYPES_V8_H
 
+#include <array>
+
 #include "ocd_types.h"
 
 namespace Ocd
@@ -85,6 +87,30 @@ namespace Ocd
 	struct IconV8
 	{
 		quint8  bits[264];
+		
+		static constexpr int size() { return 22; }
+		
+		template<typename T>
+		static std::array<T, 16> palette() {
+			return {
+				T{   0,   0,   0 },
+				T{ 128,   0,   0 },
+				T{ 0,   128,   0 },
+				T{ 128, 128,   0 },
+				T{   0,   0, 128 },
+				T{ 128,   0, 128 },
+				T{   0, 128, 128 },
+				T{ 128, 128, 128 },
+				T{ 192, 192, 192 },
+				T{ 255,   0,   0 },
+				T{   0, 255,   0 },
+				T{ 255, 255,   0 },
+				T{   0,   0, 255 },
+				T{ 255,   0, 255 },
+				T{   0, 255, 255 },
+				T{ 255, 255, 255 }
+			};
+		}
 	};
 	
 	bool operator==(const IconV8& lhs, const IconV8& rhs);
